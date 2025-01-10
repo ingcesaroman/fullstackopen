@@ -21,22 +21,32 @@ notesRouter.put('/:id', async (request, response) => {
 })
 
 notesRouter.post('/', async (request, response) => {
-  const body = request.body
+  const body = request.body;
 
-  const user = await User.findById(body.userId)
+  // ID de usuario predeterminado
+  const defaultUserId = '605c72ef1532074d2433f202'; // El ID del usuario 'defaultuser'
+
+  // Busca el usuario usando el ID proporcionado o el predeterminado
+  const userId = body.userId || defaultUserId;
+  const user = await User.findById(userId);
+
+  if (!user) {
+    return response.status(400).json({ error: 'Invalid userId' });
+  }
 
   const note = new Note({
     content: body.content,
     important: body.important || false,
-    user: user._id
-  })
+    user: user._id,
+  });
 
-  const savedNote = await note.save()
-  user.notes = user.notes.concat(savedNote._id)
-  await user.save()
+  const savedNote = await note.save();
+  user.notes = user.notes.concat(savedNote._id);
+  await user.save();
 
-  response.status(201).json(savedNote)
-})
+  response.status(201).json(savedNote);
+});
+
 
 notesRouter.get('/:id', async (request, response) => {
   const note = await Note.findById(request.params.id)

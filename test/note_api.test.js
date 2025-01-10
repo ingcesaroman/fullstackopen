@@ -70,23 +70,34 @@ describe('when there is initially some notes saved', () => {
   })
 
   describe('addition of a new note', () => {
+    let defaultUser; 
+
+    beforeEach(async () => {
+      await User.deleteMany({})
+  
+      const passwordHash = await bcrypt.hash('sekret', 10)
+      defaultUser = new User({ username: 'root', passwordHash })
+      await defaultUser.save()
+    })
     test('succeeds with valid data', async () => {
       const newNote = {
         content: 'async/await simplifies making async calls',
         important: true,
+        userId: defaultUser._id 
       }
 
-      await api
+      const response = await api
         .post('/api/notes')
         .send(newNote)
         .expect(201)
         .expect('Content-Type', /application\/json/)
-
+        
       const notesAtEnd = await helper.notesInDb()
-      assert.strictEqual(notesAtEnd.length, helper.initialNotes.length + 1)
 
-      const contents = notesAtEnd.map(n => n.content)
-      assert(contents.includes('async/await simplifies making async calls'))
+    assert.strictEqual(notesAtEnd.length, helper.initialNotes.length + 1)
+
+    const contents = notesAtEnd.map(n => n.content)
+    assert(contents.includes('async/await simplifies making async calls'))
     })
 
     test('fails with status code 400 if data invalid', async () => {
@@ -126,57 +137,65 @@ describe('when there is initially some notes saved', () => {
 
 describe('when there is initially one user at db', () => {
   beforeEach(async () => {
-    await User.deleteMany({})
+    await User.deleteMany({});
 
-    const passwordHash = await bcrypt.hash('sekret', 10)
-    const user = new User({ username: 'root', passwordHash })
+    const passwordHash = await bcrypt.hash('sekret', 10);
+    const user = new User({ username: 'root', passwordHash });
 
-    await user.save()
-  })
+    await user.save();
+  });
 
   test('creation succeeds with a fresh username', async () => {
-    const usersAtStart = await helper.usersInDb()
+    const usersAtStart = await helper.usersInDb();
 
     const newUser = {
       username: 'mluukkai',
       name: 'Matti Luukkainen',
       password: 'salainen',
-    }
+    };
 
-    await api
+    const response = await api
       .post('/api/users')
       .send(newUser)
       .expect(201)
-      .expect('Content-Type', /application\/json/)
+      .expect('Content-Type', /application\/json/);
 
-    const usersAtEnd = await helper.usersInDb()
-    assert.strictEqual(usersAtEnd.length, usersAtStart.length + 1)
+    const usersAtEnd = await helper.usersInDb();
 
-    const usernames = usersAtEnd.map(u => u.username)
-    assert(usernames.includes(newUser.username))
-  })
+    assert.strictEqual(usersAtEnd.length, usersAtStart.length + 1);
+
+    const usernames = usersAtEnd.map((u) => u.username);
+
+    assert(usernames.includes(newUser.username));
+  });
 
   test('creation fails with proper statuscode and message if username already taken', async () => {
-    const usersAtStart = await helper.usersInDb()
-
+    // Obtén los usuarios iniciales de la base de datos
+    const usersAtStart = await helper.usersInDb();
+  
+    // Define un usuario con un nombre duplicado
     const newUser = {
       username: 'root',
       name: 'Superuser',
       password: 'salainen',
-    }
-
+    };
+  
+    // Intenta crear el usuario duplicado y verifica la respuesta del servidor
     const result = await api
       .post('/api/users')
       .send(newUser)
       .expect(400)
-      .expect('Content-Type', /application\/json/)
-
-    const usersAtEnd = await helper.usersInDb()
-
-    assert(result.body.error.includes('expected `username` to be unique'))
-
-    assert.strictEqual(usersAtEnd.length, usersAtStart.length)
-  })
+      .expect('Content-Type', /application\/json/);
+  
+    // Verifica el estado de la base de datos después de intentar la creación
+    const usersAtEnd = await helper.usersInDb();
+  
+    // Comprueba que el mensaje de error indique un username duplicado
+    assert(result.body.error.includes('username must be unique'));
+  
+    // Asegúrate de que la cantidad de usuarios en la base de datos no cambió
+    assert.strictEqual(usersAtEnd.length, usersAtStart.length);
+  });
 })
 
 after(async () => {
